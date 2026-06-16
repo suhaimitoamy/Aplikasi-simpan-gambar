@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Center the icon at size 66dp. So, offset is (108-66)/2 = 21. -->
+    <group android:translateX="21" android:translateY="21">
+        <!-- Scale 24dp viewBox to 66dp: ratio = 66/24 = 2.75 -->
+        <group android:scaleX="2.75" android:scaleY="2.75">
+            <path
+                android:fillColor="#FFFFFF"
+                android:pathData="M22,16L22,4c0,-1.1 -0.9,-2 -2,-2L8,2c-1.1,0 -2,0.9 -2,2v12c0,1.1 0.9,2 2,2h12C21.1,18 22,17.1 22,16zM11,12l2.03,2.71L16,11l4,5H8L11,12zM2,6v14c0,1.1 0.9,2 2,2h14v-2H4V6H2z"/>
+        </group>
+    </group>
+</vector>

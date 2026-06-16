@@ -1,0 +1,6 @@
+{
+  "name": "UrutGambar",
+  "description": "An application to sequentially organize study images into explicit order.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
