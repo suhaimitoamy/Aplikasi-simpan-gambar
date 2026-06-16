@@ -32,6 +32,8 @@ import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Collections
 
+private enum class MainTab { Belajar, AturUlang, Profil }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlbumsScreen(
@@ -40,17 +42,20 @@ fun AlbumsScreen(
 ) {
     val albums by viewModel.allAlbums.collectAsStateWithLifecycle()
     var showAddDialog by remember { mutableStateOf(false) }
+    var selectedTab by remember { mutableStateOf(MainTab.Belajar) }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = { showAddDialog = true },
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.padding(end = 8.dp)
-            ) {
-                Icon(Icons.Filled.Add, contentDescription = "Add Topic")
+            if (selectedTab == MainTab.Belajar) {
+                FloatingActionButton(
+                    onClick = { showAddDialog = true },
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.padding(end = 8.dp)
+                ) {
+                    Icon(Icons.Filled.Add, contentDescription = "Add Topic")
+                }
             }
         },
         bottomBar = {
@@ -61,8 +66,8 @@ fun AlbumsScreen(
                 NavigationBarItem(
                     icon = { Icon(Icons.Filled.Collections, contentDescription = "Belajar") },
                     label = { Text("Belajar") },
-                    selected = true,
-                    onClick = { /* TODO */ },
+                    selected = selectedTab == MainTab.Belajar,
+                    onClick = { selectedTab = MainTab.Belajar },
                     colors = NavigationBarItemDefaults.colors(
                         indicatorColor = MaterialTheme.colorScheme.secondaryContainer,
                         selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -72,14 +77,14 @@ fun AlbumsScreen(
                 NavigationBarItem(
                     icon = { Icon(Icons.Filled.List, contentDescription = "Atur Ulang") },
                     label = { Text("Atur Ulang") },
-                    selected = false,
-                    onClick = { /* TODO */ }
+                    selected = selectedTab == MainTab.AturUlang,
+                    onClick = { selectedTab = MainTab.AturUlang }
                 )
                 NavigationBarItem(
                     icon = { Icon(Icons.Filled.Person, contentDescription = "Profil") },
                     label = { Text("Profil") },
-                    selected = false,
-                    onClick = { /* TODO */ }
+                    selected = selectedTab == MainTab.Profil,
+                    onClick = { selectedTab = MainTab.Profil }
                 )
             }
         }
@@ -89,7 +94,6 @@ fun AlbumsScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Editorial Header
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -99,7 +103,11 @@ fun AlbumsScreen(
             ) {
                 Column {
                     Text(
-                        text = "APLIKASI BELAJAR",
+                        text = when (selectedTab) {
+                            MainTab.Belajar -> "APLIKASI BELAJAR"
+                            MainTab.AturUlang -> "ATUR ULANG"
+                            MainTab.Profil -> "PROFIL"
+                        },
                         style = MaterialTheme.typography.labelSmall.copy(
                             letterSpacing = 2.sp,
                             fontWeight = FontWeight.SemiBold
@@ -108,7 +116,11 @@ fun AlbumsScreen(
                         modifier = Modifier.padding(bottom = 4.dp)
                     )
                     Text(
-                        text = "Koleksi\nTopik",
+                        text = when (selectedTab) {
+                            MainTab.Belajar -> "Koleksi\nTopik"
+                            MainTab.AturUlang -> "Atur\nUlang"
+                            MainTab.Profil -> "Profil\nAplikasi"
+                        },
                         style = MaterialTheme.typography.displayMedium.copy(
                             lineHeight = 40.sp,
                             fontFamily = FontFamily.Serif
@@ -132,8 +144,7 @@ fun AlbumsScreen(
                     )
                 }
             }
-            
-            // Sub-header stats
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -143,7 +154,11 @@ fun AlbumsScreen(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "TOTAL TOPIK: ${albums.size}",
+                    text = when (selectedTab) {
+                        MainTab.Belajar -> "TOTAL TOPIK: ${albums.size}"
+                        MainTab.AturUlang -> "PILIH TOPIK UNTUK ATUR GAMBAR"
+                        MainTab.Profil -> "TOTAL TOPIK: ${albums.size}"
+                    },
                     style = MaterialTheme.typography.labelSmall.copy(
                         letterSpacing = 1.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -155,27 +170,127 @@ fun AlbumsScreen(
                 modifier = Modifier.padding(horizontal = 24.dp).padding(bottom = 16.dp)
             )
 
-            if (albums.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(
-                        text = "Belum ada topik. Tap + untuk menambah.",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+            when (selectedTab) {
+                MainTab.Belajar -> {
+                    if (albums.isEmpty()) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text(
+                                text = "Belum ada topik. Tap + untuk menambah.",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            itemsIndexed(albums, key = { _, it -> it.id }) { index, album ->
+                                AlbumItem(
+                                    album = album,
+                                    index = index,
+                                    onClick = { onAlbumClick(album.id) },
+                                    onDelete = { viewModel.deleteAlbum(album.id) }
+                                )
+                            }
+                        }
+                    }
                 }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    itemsIndexed(albums, key = { _, it -> it.id }) { index, album ->
-                        AlbumItem(
-                            album = album,
-                            index = index,
-                            onClick = { onAlbumClick(album.id) },
-                            onDelete = { viewModel.deleteAlbum(album.id) }
-                        )
+                MainTab.AturUlang -> {
+                    if (albums.isEmpty()) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text(
+                                text = "Belum ada topik untuk diatur.",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            itemsIndexed(albums, key = { _, it -> it.id }) { index, album ->
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { onAlbumClick(album.id) },
+                                    shape = RoundedCornerShape(28.dp),
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(20.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = (index + 1).toString().padStart(2, '0'),
+                                            style = MaterialTheme.typography.titleLarge.copy(
+                                                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                                                fontFamily = FontFamily.Serif
+                                            ),
+                                            color = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.padding(end = 16.dp)
+                                        )
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = album.title,
+                                                style = MaterialTheme.typography.titleLarge.copy(
+                                                    fontSize = 18.sp,
+                                                    lineHeight = 24.sp
+                                                ),
+                                                color = MaterialTheme.colorScheme.onBackground,
+                                                maxLines = 2,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                text = "Tap untuk atur urutan gambar",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.padding(start = 8.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                MainTab.Profil -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 24.dp, vertical = 8.dp)
+                    ) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(28.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                        ) {
+                            Column(modifier = Modifier.padding(24.dp)) {
+                                Text(
+                                    text = "Aplikasi Simpan Gambar",
+                                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text(
+                                    text = "Total topik: ${albums.size}",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -201,23 +316,21 @@ fun AlbumItem(
     onDelete: () -> Unit
 ) {
     val isPrimary = index == 0
-    
+
     if (isPrimary) {
-        // Primary Focus Card style
         Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(220.dp)
                 .clickable(onClick = onClick),
             shape = RoundedCornerShape(32.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.0f)) // transparent backing
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.0f))
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color(0xFF2D2D2D))
             ) {
-                // Number
                 Text(
                     text = (index + 1).toString().padStart(2, '0'),
                     style = MaterialTheme.typography.displayMedium.copy(
@@ -227,8 +340,7 @@ fun AlbumItem(
                     color = Color.White.copy(alpha = 0.2f),
                     modifier = Modifier.padding(start = 24.dp, top = 20.dp)
                 )
-                
-                // Active badge
+
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
@@ -246,7 +358,6 @@ fun AlbumItem(
                     )
                 }
 
-                // Delete Button
                 IconButton(
                     onClick = onDelete,
                     modifier = Modifier
@@ -256,7 +367,6 @@ fun AlbumItem(
                     Icon(Icons.Filled.Delete, contentDescription = "Delete Topic", tint = Color.White.copy(alpha = 0.7f))
                 }
 
-                // Title
                 Column(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
@@ -279,7 +389,6 @@ fun AlbumItem(
             }
         }
     } else {
-        // Secondary Sequential Card style
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -303,7 +412,7 @@ fun AlbumItem(
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(end = 16.dp)
                 )
-                
+
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = album.title,
@@ -316,11 +425,11 @@ fun AlbumItem(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                
+
                 IconButton(onClick = onDelete) {
                     Icon(Icons.Filled.Delete, contentDescription = "Delete Topic", tint = MaterialTheme.colorScheme.error)
                 }
-                
+
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                     contentDescription = null,
