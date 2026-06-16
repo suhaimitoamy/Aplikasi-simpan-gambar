@@ -1,6 +1,8 @@
 package com.example.ui
 
+import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -34,6 +36,8 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.data.StudyImage
+import java.io.File
+import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,7 +54,7 @@ fun AlbumDetailScreen(
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenMultipleDocuments(),
         onResult = { uris ->
-            uris.forEachIndexed { index, uri ->
+            val storedUris = uris.map { uri ->
                 try {
                     context.contentResolver.takePersistableUriPermission(
                         uri,
@@ -59,8 +63,9 @@ fun AlbumDetailScreen(
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }
-                viewModel.addImageToAlbum(albumId, uri.toString(), images.size + index)
+                copyImageToInternalStorage(context, uri.toString()) ?: uri.toString()
             }
+            viewModel.addImagesToAlbum(albumId, storedUris)
         }
     )
 
@@ -217,9 +222,9 @@ fun StudyImageItem(
                     .fillMaxSize()
                     .background(
                         Brush.verticalGradient(
-                            colors = listOf(Color.Black.copy(alpha = 0.4f), Color.Transparent),
+                            colors = listOf(Color.Black.copy(alpha = 0.25f), Color.Transparent),
                             startY = 0f,
-                            endY = 300f
+                            endY = 220f
                         )
                     )
             )
@@ -271,9 +276,7 @@ fun FullscreenImageDialog(
             AsyncImage(
                 model = imageUri,
                 contentDescription = "Fullscreen Study Material",
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clickable(onClick = onDismiss),
+                modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Fit
             )
             IconButton(
@@ -290,5 +293,27 @@ fun FullscreenImageDialog(
                 )
             }
         }
+    }
+}
+
+private fun copyImageToInternalStorage(context: Context, uriString: String): String? {
+    return try {
+        val sourceUri = Uri.parse(uriString)
+        val dir = File(context.filesDir, "stored_images")
+        if (!dir.exists()) dir.mkdirs()
+        val extension = context.contentResolver.getType(sourceUri)
+            ?.substringAfterLast("/")
+            ?.substringBefore(";")
+            ?.takeIf { it.isNotBlank() }
+            ?: "jpg"
+        val targetFile = File(dir, "image_${System.currentTimeMillis()}_${UUID.randomUUID()}.$extension")
+        context.contentResolver.openInputStream(sourceUri)?.use { input ->
+            targetFile.outputStream().use { output ->
+                input.copyTo(output)
+            }
+        } ?: return null
+        Uri.fromFile(targetFile).toString()
+    } catch (e: Exception) {
+        null
     }
 }
