@@ -6,6 +6,7 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -15,9 +16,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
@@ -47,7 +46,7 @@ fun AlbumDetailScreen(
     val album by viewModel.getAlbumById(albumId).collectAsStateWithLifecycle()
     val images by viewModel.getImagesForAlbum(albumId).collectAsStateWithLifecycle()
     val context = LocalContext.current
-    var fullscreenImageUri by remember { mutableStateOf<String?>(null) }
+    var fullscreenImageIndex by remember { mutableStateOf<Int?>(null) }
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
@@ -169,12 +168,7 @@ fun AlbumDetailScreen(
                         StudyImageItem(
                             studyImage = studyImage,
                             stepNumber = index + 1,
-                            isFirst = index == 0,
-                            isLast = index == images.lastIndex,
-                            onImageClick = { fullscreenImageUri = studyImage.uriString },
-                            onMoveUp = { viewModel.moveImage(images, index, index - 1) },
-                            onMoveDown = { viewModel.moveImage(images, index, index + 1) },
-                            onDelete = { viewModel.deleteImage(studyImage.id) }
+                            onImageClick = { fullscreenImageIndex = index }
                         )
                     }
                 }
@@ -182,11 +176,16 @@ fun AlbumDetailScreen(
         }
     }
 
-    fullscreenImageUri?.let { imageUri ->
-        FullscreenImageDialog(
-            imageUri = imageUri,
-            onDismiss = { fullscreenImageUri = null }
-        )
+    fullscreenImageIndex?.let { imageIndex ->
+        if (images.isNotEmpty()) {
+            val safeIndex = imageIndex.coerceIn(0, images.lastIndex)
+            FullscreenImageDialog(
+                imageUris = images.map { it.uriString },
+                currentIndex = safeIndex,
+                onIndexChange = { fullscreenImageIndex = it },
+                onDismiss = { fullscreenImageIndex = null }
+            )
+        }
     }
 }
 
@@ -194,12 +193,7 @@ fun AlbumDetailScreen(
 fun StudyImageItem(
     studyImage: StudyImage,
     stepNumber: Int,
-    isFirst: Boolean,
-    isLast: Boolean,
-    onImageClick: () -> Unit,
-    onMoveUp: () -> Unit,
-    onMoveDown: () -> Unit,
-    onDelete: () -> Unit
+    onImageClick: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -207,68 +201,51 @@ fun StudyImageItem(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
-        Column {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 250.dp, max = 400.dp)
+                .clickable(onClick = onImageClick)
+        ) {
+            AsyncImage(
+                model = studyImage.uriString,
+                contentDescription = "Study Material",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 250.dp, max = 400.dp)
-                    .clickable(onClick = onImageClick)
-            ) {
-                AsyncImage(
-                    model = studyImage.uriString,
-                    contentDescription = "Study Material",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(Color.Black.copy(alpha = 0.4f), Color.Transparent),
-                                startY = 0f,
-                                endY = 300f
-                            )
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(Color.Black.copy(alpha = 0.4f), Color.Transparent),
+                            startY = 0f,
+                            endY = 300f
                         )
-                )
-                Text(
-                    text = stepNumber.toString().padStart(2, '0'),
-                    style = MaterialTheme.typography.displayMedium.copy(
-                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
-                        fontWeight = FontWeight.Black
-                    ),
-                    color = Color.White,
-                    modifier = Modifier.padding(start = 24.dp, top = 20.dp)
-                )
-            }
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .padding(horizontal = 24.dp, vertical = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.End
-            ) {
-                IconButton(onClick = onMoveUp, enabled = !isFirst) {
-                    Icon(Icons.Filled.KeyboardArrowUp, contentDescription = "Move Up", tint = MaterialTheme.colorScheme.primary)
-                }
-                IconButton(onClick = onMoveDown, enabled = !isLast) {
-                    Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "Move Down", tint = MaterialTheme.colorScheme.primary)
-                }
-                Spacer(modifier = Modifier.width(16.dp))
-                IconButton(onClick = onDelete) {
-                    Icon(Icons.Filled.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
-                }
-            }
+                    )
+            )
+            Text(
+                text = stepNumber.toString().padStart(2, '0'),
+                style = MaterialTheme.typography.displayMedium.copy(
+                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                    fontWeight = FontWeight.Black
+                ),
+                color = Color.White,
+                modifier = Modifier.padding(start = 24.dp, top = 20.dp)
+            )
         }
     }
 }
 
 @Composable
 fun FullscreenImageDialog(
-    imageUri: String,
+    imageUris: List<String>,
+    currentIndex: Int,
+    onIndexChange: (Int) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val imageUri = imageUris.getOrNull(currentIndex) ?: return
+
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -277,6 +254,20 @@ fun FullscreenImageDialog(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Black)
+                .pointerInput(currentIndex, imageUris.size) {
+                    var totalDrag = 0f
+                    detectVerticalDragGestures(
+                        onDragStart = { totalDrag = 0f },
+                        onVerticalDrag = { _, dragAmount ->
+                            totalDrag += dragAmount
+                        },
+                        onDragEnd = {
+                            if (totalDrag < -80f && currentIndex < imageUris.lastIndex) {
+                                onIndexChange(currentIndex + 1)
+                            }
+                        }
+                    )
+                }
         ) {
             AsyncImage(
                 model = imageUri,
