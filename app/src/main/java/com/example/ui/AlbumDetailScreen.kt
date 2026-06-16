@@ -2,7 +2,6 @@ package com.example.ui
 
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -48,19 +47,19 @@ fun AlbumDetailScreen(
     val context = LocalContext.current
     var fullscreenImageIndex by remember { mutableStateOf<Int?>(null) }
 
-    val photoPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia(),
-        onResult = { uri ->
-            uri?.let {
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenMultipleDocuments(),
+        onResult = { uris ->
+            uris.forEachIndexed { index, uri ->
                 try {
                     context.contentResolver.takePersistableUriPermission(
-                        it,
+                        uri,
                         Intent.FLAG_GRANT_READ_URI_PERMISSION
                     )
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }
-                viewModel.addImageToAlbum(albumId, it.toString(), images.size)
+                viewModel.addImageToAlbum(albumId, uri.toString(), images.size + index)
             }
         }
     )
@@ -70,7 +69,7 @@ fun AlbumDetailScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = {
-                    photoPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    imagePickerLauncher.launch(arrayOf("image/*"))
                 },
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
