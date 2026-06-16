@@ -24,6 +24,9 @@ interface StudyDao {
     @Query("SELECT * FROM study_images WHERE albumId = :albumId ORDER BY sequenceOrder ASC")
     fun getImagesForAlbum(albumId: Int): Flow<List<StudyImage>>
 
+    @Query("SELECT COALESCE(MAX(sequenceOrder) + 1, 0) FROM study_images WHERE albumId = :albumId")
+    suspend fun getNextSequenceOrder(albumId: Int): Int
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertStudyImage(studyImage: StudyImage)
 
