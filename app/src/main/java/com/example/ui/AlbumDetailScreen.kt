@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AddPhotoAlternate
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -30,9 +31,10 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
-import com.example.data.Album
 import com.example.data.StudyImage
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -45,6 +47,7 @@ fun AlbumDetailScreen(
     val album by viewModel.getAlbumById(albumId).collectAsStateWithLifecycle()
     val images by viewModel.getImagesForAlbum(albumId).collectAsStateWithLifecycle()
     val context = LocalContext.current
+    var fullscreenImageUri by remember { mutableStateOf<String?>(null) }
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
@@ -83,7 +86,6 @@ fun AlbumDetailScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Editorial Header
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -128,7 +130,6 @@ fun AlbumDetailScreen(
                 }
             }
 
-            // Sub-header controls
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -170,6 +171,7 @@ fun AlbumDetailScreen(
                             stepNumber = index + 1,
                             isFirst = index == 0,
                             isLast = index == images.lastIndex,
+                            onImageClick = { fullscreenImageUri = studyImage.uriString },
                             onMoveUp = { viewModel.moveImage(images, index, index - 1) },
                             onMoveDown = { viewModel.moveImage(images, index, index + 1) },
                             onDelete = { viewModel.deleteImage(studyImage.id) }
@@ -179,6 +181,13 @@ fun AlbumDetailScreen(
             }
         }
     }
+
+    fullscreenImageUri?.let { imageUri ->
+        FullscreenImageDialog(
+            imageUri = imageUri,
+            onDismiss = { fullscreenImageUri = null }
+        )
+    }
 }
 
 @Composable
@@ -187,6 +196,7 @@ fun StudyImageItem(
     stepNumber: Int,
     isFirst: Boolean,
     isLast: Boolean,
+    onImageClick: () -> Unit,
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit,
     onDelete: () -> Unit
@@ -202,6 +212,7 @@ fun StudyImageItem(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 250.dp, max = 400.dp)
+                    .clickable(onClick = onImageClick)
             ) {
                 AsyncImage(
                     model = studyImage.uriString,
@@ -209,7 +220,6 @@ fun StudyImageItem(
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
                 )
-                // Gradient overlay
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -221,8 +231,6 @@ fun StudyImageItem(
                             )
                         )
                 )
-                
-                // Sequence Number
                 Text(
                     text = stepNumber.toString().padStart(2, '0'),
                     style = MaterialTheme.typography.displayMedium.copy(
@@ -233,7 +241,6 @@ fun StudyImageItem(
                     modifier = Modifier.padding(start = 24.dp, top = 20.dp)
                 )
             }
-            
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -252,6 +259,45 @@ fun StudyImageItem(
                 IconButton(onClick = onDelete) {
                     Icon(Icons.Filled.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun FullscreenImageDialog(
+    imageUri: String,
+    onDismiss: () -> Unit
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+        ) {
+            AsyncImage(
+                model = imageUri,
+                contentDescription = "Fullscreen Study Material",
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clickable(onClick = onDismiss),
+                contentScale = ContentScale.Fit
+            )
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(24.dp)
+                    .background(Color.Black.copy(alpha = 0.45f), CircleShape)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Close,
+                    contentDescription = "Close",
+                    tint = Color.White
+                )
             }
         }
     }
