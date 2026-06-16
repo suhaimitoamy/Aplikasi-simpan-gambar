@@ -11,6 +11,7 @@ class StudyRepository(private val studyDao: StudyDao) {
     suspend fun insertAlbum(album: Album) = studyDao.insertAlbum(album)
     suspend fun deleteAlbumById(id: Int) = studyDao.deleteAlbumById(id)
 
+    suspend fun getNextSequenceOrder(albumId: Int) = studyDao.getNextSequenceOrder(albumId)
     suspend fun insertStudyImage(studyImage: StudyImage) = studyDao.insertStudyImage(studyImage)
     suspend fun updateStudyImage(studyImage: StudyImage) = studyDao.updateStudyImage(studyImage)
     suspend fun updateStudyImages(studyImages: List<StudyImage>) = studyDao.updateStudyImages(studyImages)
