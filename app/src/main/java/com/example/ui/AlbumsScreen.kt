@@ -11,8 +11,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Collections
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -28,10 +30,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.Album
 
-import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Collections
-
 private enum class MainTab { Belajar, AturUlang, Profil }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -43,6 +41,9 @@ fun AlbumsScreen(
     val albums by viewModel.allAlbums.collectAsStateWithLifecycle()
     var showAddDialog by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableStateOf(MainTab.Belajar) }
+    var searchOpen by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+    val filteredAlbums = if (searchQuery.isBlank()) albums else albums.filter { it.title.contains(searchQuery, ignoreCase = true) }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -128,20 +129,22 @@ fun AlbumsScreen(
                         color = MaterialTheme.colorScheme.onBackground
                     )
                 }
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primaryContainer)
-                        .clickable { /* Search */ },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Search,
-                        contentDescription = "Search",
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.size(20.dp)
-                    )
+                if (selectedTab == MainTab.Belajar) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primaryContainer)
+                            .clickable { searchOpen = !searchOpen },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Search,
+                            contentDescription = "Search",
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
             }
 
@@ -149,13 +152,13 @@ fun AlbumsScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp)
-                    .padding(bottom = 24.dp),
+                    .padding(bottom = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
                     text = when (selectedTab) {
-                        MainTab.Belajar -> "TOTAL TOPIK: ${albums.size}"
+                        MainTab.Belajar -> "TOTAL TOPIK: ${filteredAlbums.size}"
                         MainTab.AturUlang -> "PILIH TOPIK UNTUK ATUR GAMBAR"
                         MainTab.Profil -> "TOTAL TOPIK: ${albums.size}"
                     },
@@ -165,6 +168,20 @@ fun AlbumsScreen(
                     )
                 )
             }
+
+            if (selectedTab == MainTab.Belajar && searchOpen) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp)
+                        .padding(bottom = 16.dp),
+                    singleLine = true,
+                    label = { Text("Cari topik") }
+                )
+            }
+
             Divider(
                 color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
                 modifier = Modifier.padding(horizontal = 24.dp).padding(bottom = 16.dp)
@@ -172,10 +189,10 @@ fun AlbumsScreen(
 
             when (selectedTab) {
                 MainTab.Belajar -> {
-                    if (albums.isEmpty()) {
+                    if (filteredAlbums.isEmpty()) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             Text(
-                                text = "Belum ada topik. Tap + untuk menambah.",
+                                text = if (searchQuery.isBlank()) "Belum ada topik. Tap + untuk menambah." else "Topik tidak ditemukan.",
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -186,7 +203,7 @@ fun AlbumsScreen(
                             contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp),
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            itemsIndexed(albums, key = { _, it -> it.id }) { index, album ->
+                            itemsIndexed(filteredAlbums, key = { _, it -> it.id }) { index, album ->
                                 AlbumItem(
                                     album = album,
                                     index = index,
