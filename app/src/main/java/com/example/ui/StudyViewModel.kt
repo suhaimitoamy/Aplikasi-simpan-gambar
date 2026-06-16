@@ -49,6 +49,21 @@ class StudyViewModel(private val repository: StudyRepository) : ViewModel() {
         }
     }
 
+    fun addImagesToAlbum(albumId: Int, uriStrings: List<String>) {
+        viewModelScope.launch {
+            val startOrder = repository.getNextSequenceOrder(albumId)
+            uriStrings.forEachIndexed { index, uriString ->
+                repository.insertStudyImage(
+                    StudyImage(
+                        albumId = albumId,
+                        uriString = uriString,
+                        sequenceOrder = startOrder + index
+                    )
+                )
+            }
+        }
+    }
+
     fun deleteImage(imageId: Int) {
         viewModelScope.launch {
             repository.deleteStudyImageById(imageId)
@@ -61,7 +76,6 @@ class StudyViewModel(private val repository: StudyRepository) : ViewModel() {
         val item = updatedList.removeAt(fromIndex)
         updatedList.add(toIndex, item)
         
-        // Reassign sequence orders
         val reordered = updatedList.mapIndexed { index, studyImage ->
             studyImage.copy(sequenceOrder = index)
         }
