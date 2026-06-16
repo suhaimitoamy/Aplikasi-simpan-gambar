@@ -1,5 +1,7 @@
 package com.example.ui
 
+import android.content.Context
+import android.net.Uri
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -22,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -29,6 +32,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.Album
+import java.io.File
+import java.util.UUID
 
 private enum class MainTab { Belajar, AturUlang, Profil }
 
@@ -36,9 +41,12 @@ private enum class MainTab { Belajar, AturUlang, Profil }
 @Composable
 fun AlbumsScreen(
     viewModel: StudyViewModel,
-    onAlbumClick: (Int) -> Unit
+    onAlbumClick: (Int) -> Unit,
+    pendingSharedImageUris: List<String> = emptyList(),
+    onSharedImagesHandled: () -> Unit = {}
 ) {
     val albums by viewModel.allAlbums.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     var showAddDialog by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableStateOf(MainTab.Belajar) }
     var searchOpen by remember { mutableStateOf(false) }
@@ -322,6 +330,93 @@ fun AlbumsScreen(
                 }
             )
         }
+
+        if (pendingSharedImageUris.isNotEmpty()) {
+            SharedImageTargetDialog(
+                albums = albums,
+                imageCount = pendingSharedImageUris.size,
+                onDismiss = onSharedImagesHandled,
+                onAlbumSelected = { album ->
+                    val storedUris = pendingSharedImageUris.map { uriString ->
+                        copyImageToAppStorage(context, uriString) ?: uriString
+                    }
+                    viewModel.addImagesToAlbum(album.id, storedUris)
+                    onSharedImagesHandled()
+                }
+            )
+        }
+    }
+}
+
+@Composable
+fun SharedImageTargetDialog(
+    albums: List<Album>,
+    imageCount: Int,
+    onDismiss: () -> Unit,
+    onAlbumSelected: (Album) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Masukkan Gambar") },
+        text = {
+            if (albums.isEmpty()) {
+                Text("Belum ada topik. Buat topik dulu.")
+            } else {
+                Column {
+                    Text("Pilih topik untuk $imageCount gambar.")
+                    Spacer(modifier = Modifier.height(12.dp))
+                    LazyColumn(
+                        modifier = Modifier.heightIn(max = 320.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        itemsIndexed(albums, key = { _, album -> album.id }) { _, album ->
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onAlbumSelected(album) },
+                                shape = RoundedCornerShape(18.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                            ) {
+                                Text(
+                                    text = album.title,
+                                    modifier = Modifier.padding(16.dp),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Batal")
+            }
+        }
+    )
+}
+
+private fun copyImageToAppStorage(context: Context, uriString: String): String? {
+    return try {
+        val sourceUri = Uri.parse(uriString)
+        val dir = File(context.filesDir, "shared_images")
+        if (!dir.exists()) dir.mkdirs()
+        val extension = context.contentResolver.getType(sourceUri)
+            ?.substringAfterLast("/")
+            ?.substringBefore(";")
+            ?.takeIf { it.isNotBlank() }
+            ?: "jpg"
+        val targetFile = File(dir, "image_${System.currentTimeMillis()}_${UUID.randomUUID()}.$extension")
+        context.contentResolver.openInputStream(sourceUri)?.use { input ->
+            targetFile.outputStream().use { output ->
+                input.copyTo(output)
+            }
+        } ?: return null
+        Uri.fromFile(targetFile).toString()
+    } catch (e: Exception) {
+        null
     }
 }
 
