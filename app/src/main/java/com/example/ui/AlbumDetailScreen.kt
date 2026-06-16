@@ -46,8 +46,10 @@ fun AlbumDetailScreen(
     viewModel: StudyViewModel,
     onBack: () -> Unit
 ) {
-    val album by viewModel.getAlbumById(albumId).collectAsStateWithLifecycle()
-    val images by viewModel.getImagesForAlbum(albumId).collectAsStateWithLifecycle()
+    val albumFlow = remember(albumId) { viewModel.getAlbumById(albumId) }
+    val imagesFlow = remember(albumId) { viewModel.getImagesForAlbum(albumId) }
+    val album by albumFlow.collectAsStateWithLifecycle()
+    val images by imagesFlow.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var fullscreenImageIndex by remember { mutableStateOf<Int?>(null) }
 
@@ -184,7 +186,7 @@ fun AlbumDetailScreen(
         if (images.isNotEmpty()) {
             val safeIndex = imageIndex.coerceIn(0, images.lastIndex)
             FullscreenImageDialog(
-                imageUris = images.map { it.uriString },
+                imageUris = remember(images) { images.map { it.uriString } },
                 currentIndex = safeIndex,
                 onIndexChange = { fullscreenImageIndex = it },
                 onDismiss = { fullscreenImageIndex = null }
